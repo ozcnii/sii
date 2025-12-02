@@ -27,7 +27,6 @@ warnings.filterwarnings("ignore")
 
 # ЭТАП 1: ПОСТАНОВКА ЗАДАЧИ И ДАННЫЕ
 
-# Настройки визуализации
 PALETTE = "Set2"
 sns.set(style="whitegrid")
 plt.rcParams["figure.figsize"] = (12, 6)
@@ -36,14 +35,14 @@ plt.rcParams["font.size"] = 12
 RANDOM_STATE = 42
 
 
-print("\n--- ЭТАП 1: ПОСТАНОВКА ЗАДАЧИ И ДАННЫЕ ---\n")
+print("\nЭТАП 1: ПОСТАНОВКА ЗАДАЧИ И ДАННЫЕ\n")
 
 try:
     url = "https://drive.google.com/uc?id=1dvVgFSH22J7okTKYD8sHzJvJJ9MRZzkN&export=download"
     df = pd.read_csv(url, delimiter=";")
-    print("✓ Файл успешно загружен")
+    print("Файл успешно загружен")
 except Exception as e:
-    print(f"✗ Ошибка загрузки файла: {e}")
+    print(f"Ошибка загрузки файла: {e}")
     exit(1)
 
 COLUMN_TRANSLATOR = {
@@ -71,7 +70,6 @@ COLUMN_TRANSLATOR = {
 }
 
 print("\nОПИСАНИЕ ДАТАСЕТА:")
-print("-" * 50)
 print(f"Размерность: {df.shape[0]} строк × {df.shape[1]} столбцов")
 
 print("\nПервые 5 строк датасета:")
@@ -82,7 +80,7 @@ df.info()
 
 # Удаление дубликатов
 df.drop_duplicates(inplace=True)
-print(f"✓ Дубликаты удалены. Размерность: {df.shape}")
+print(f"Дубликаты удалены. Размерность: {df.shape}")
 
 # Обработка 'unknown' значений
 object_cols = df.select_dtypes(include=["object"]).columns
@@ -94,9 +92,9 @@ for col in object_cols:
             df[col] = df[col].replace("unknown", second_mode)
         else:
             df[col] = df[col].replace("unknown", mode_value)
-print("✓ Значения 'unknown' заменены на моду")
+print("Значения 'unknown' заменены на моду")
 
-# Для кластеризации будем использовать только релевантные признаки клиента
+# будем использовать только релевантные признаки клиента
 clustering_features = [
     "age",
     "job",
@@ -112,7 +110,7 @@ clustering_features = [
 ]
 
 df_cluster = df[clustering_features].copy()
-print(f"\n✓ Выбраны признаки для кластеризации: {len(clustering_features)} шт.")
+print(f"\nВыбраны признаки для кластеризации: {len(clustering_features)} шт.")
 print(f"  {clustering_features}")
 
 
@@ -123,7 +121,6 @@ print("ЭТАП 2: БАЗОВЫЙ МЕТОД (BASELINE) - K-MEANS КЛАСТЕР
 
 df_encoded = df_cluster.copy()
 
-# Label Encoding для категориальных признаков
 label_encoders = {}
 categorical_cols = df_encoded.select_dtypes(include=["object"]).columns
 
@@ -131,15 +128,14 @@ for col in categorical_cols:
     le = LabelEncoder()
     df_encoded[col] = le.fit_transform(df_encoded[col])
     label_encoders[col] = le
-    print(f"✓ {col}: закодировано {len(le.classes_)} категорий")
+    print(f"{col}: закодировано {len(le.classes_)} категорий")
 
-# Масштабирование
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(df_encoded)
-print("\n✓ Данные стандартизированы (StandardScaler)")
+print("\nДанные стандартизированы (StandardScaler)")
 
 # Метод локтя для определения оптимального количества кластеров
-print("\n--- Метод локтя (Elbow Method) ---")
+print("\nМетод локтя (Elbow Method)")
 
 inertias = []
 silhouettes = []
@@ -152,7 +148,6 @@ for k in K_range:
     silhouettes.append(silhouette_score(X_scaled, kmeans.labels_))
     print(f"k={k}: Inertia={kmeans.inertia_:.2f}, Silhouette={silhouettes[-1]:.4f}")
 
-# Визуализация метода локтя
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
 axes[0].plot(K_range, inertias, "bo-", linewidth=2, markersize=8)
@@ -171,13 +166,11 @@ plt.tight_layout()
 plt.savefig("elbow_method.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print("\n📊 [СКРИНШОТ 1: Метод локтя - elbow_method.png]")
-
 optimal_k = 4
-print(f"\n✓ Оптимальное количество кластеров: k = {optimal_k}")
+print(f"\nОптимальное количество кластеров: k = {optimal_k}")
 
 # Обучение финальной модели KMeans (BASELINE)
-print("\n--- Обучение KMeans (BASELINE) с k={} ---".format(optimal_k))
+print("\nОбучение KMeans (BASELINE) с k={}".format(optimal_k))
 
 kmeans_final = KMeans(n_clusters=optimal_k, random_state=RANDOM_STATE, n_init=10)
 kmeans_labels = kmeans_final.fit_predict(X_scaled)
@@ -190,12 +183,12 @@ baseline_inertia = kmeans_final.inertia_
 baseline_davies_bouldin = davies_bouldin_score(X_scaled, kmeans_labels)
 baseline_calinski = calinski_harabasz_score(X_scaled, kmeans_labels)
 
-print(f"✓ KMeans (BASELINE) обучен")
+print(f"KMeans (BASELINE) обучен")
 print(f"\nМетрики BASELINE (KMeans):")
-print(f"  • Silhouette Score: {baseline_silhouette:.4f}")
-print(f"  • Inertia: {baseline_inertia:.2f}")
-print(f"  • Davies-Bouldin Index: {baseline_davies_bouldin:.4f}")
-print(f"  • Calinski-Harabasz Index: {baseline_calinski:.2f}")
+print(f"  - Silhouette Score: {baseline_silhouette:.4f}")
+print(f"  - Inertia: {baseline_inertia:.2f}")
+print(f"  - Davies-Bouldin Index: {baseline_davies_bouldin:.4f}")
+print(f"  - Calinski-Harabasz Index: {baseline_calinski:.2f}")
 
 print(f"\nРаспределение по кластерам:")
 print(pd.Series(kmeans_labels).value_counts().sort_index())
@@ -203,15 +196,13 @@ print(pd.Series(kmeans_labels).value_counts().sort_index())
 
 # ЭТАП 3: ПРОДВИНУТЫЕ МЕТОДЫ (DBSCAN и Hierarchical Clustering)
 
-print("\n" + "=" * 70)
-print("ЭТАП 3: ПРОДВИНУТЫЕ МЕТОДЫ (DBSCAN и Hierarchical Clustering)")
-print("=" * 70)
+print("\nЭТАП 3: ПРОДВИНУТЫЕ МЕТОДЫ (DBSCAN и Hierarchical Clustering)")
 
 # AgglomerativeClustering в sklearn - это реализация
 # иерархической кластеризации "снизу вверх" (agglomerative = hierarchical).
 
-# --- 3.1 DBSCAN ---
-print("\n--- 3.1 DBSCAN (Density-Based Spatial Clustering) ---")
+# 3.1 DBSCAN
+print("\n3.1 DBSCAN (Density-Based Spatial Clustering)")
 
 # Подбор параметров DBSCAN
 best_dbscan_score = -1
@@ -233,7 +224,7 @@ for eps in [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]:
                     best_eps = eps
                     best_min_samples = min_samples
 
-print(f"✓ Лучшие параметры: eps={best_eps}, min_samples={best_min_samples}")
+print(f"Лучшие параметры: eps={best_eps}, min_samples={best_min_samples}")
 
 # Обучение DBSCAN с лучшими параметрами
 dbscan_final = DBSCAN(eps=best_eps, min_samples=best_min_samples)
@@ -262,17 +253,17 @@ else:
     dbscan_calinski = np.nan
 
 print(f"\nРезультаты DBSCAN:")
-print(f"  • Количество кластеров: {n_clusters_dbscan}")
+print(f"  - Количество кластеров: {n_clusters_dbscan}")
 print(
-    f"  • Точки-шум (outliers): {n_noise_dbscan} ({n_noise_dbscan / len(df) * 100:.2f}%)"
+    f"  - Точки-шум (outliers): {n_noise_dbscan} ({n_noise_dbscan / len(df) * 100:.2f}%)"
 )
 if not np.isnan(dbscan_silhouette):
-    print(f"  • Silhouette Score: {dbscan_silhouette:.4f}")
+    print(f"  - Silhouette Score: {dbscan_silhouette:.4f}")
 print(f"\nРаспределение по кластерам (-1 = шум):")
 print(pd.Series(dbscan_labels).value_counts().sort_index())
 
-# --- 3.2 Hierarchical (Иерархическая) кластеризация ---
-print("\n--- 3.2 Hierarchical (Иерархическая) кластеризация ---")
+# 3.2 Hierarchical (Иерархическая) кластеризация
+print("\n3.2 Hierarchical (Иерархическая) кластеризация")
 
 sample_size = 1000
 np.random.seed(RANDOM_STATE)
@@ -299,9 +290,7 @@ plt.tight_layout()
 plt.savefig("dendrogram.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print("\n📊 [СКРИНШОТ 2: Дендрограмма - dendrogram.png]")
 
-# Обучение Hierarchical Clustering
 print(f"\nОбучение Hierarchical Clustering с k={optimal_k}...")
 hierarchical = AgglomerativeClustering(n_clusters=optimal_k, linkage="ward")
 hierarchical_labels = hierarchical.fit_predict(X_scaled)
@@ -313,19 +302,16 @@ hierarchical_silhouette = silhouette_score(X_scaled, hierarchical_labels)
 hierarchical_davies_bouldin = davies_bouldin_score(X_scaled, hierarchical_labels)
 hierarchical_calinski = calinski_harabasz_score(X_scaled, hierarchical_labels)
 
-print(f"✓ Hierarchical Clustering обучен")
+print(f"Hierarchical Clustering обучен")
 print(f"\nМетрики Hierarchical Clustering:")
-print(f"  • Silhouette Score: {hierarchical_silhouette:.4f}")
-print(f"  • Davies-Bouldin Index: {hierarchical_davies_bouldin:.4f}")
-print(f"  • Calinski-Harabasz Index: {hierarchical_calinski:.2f}")
+print(f"  - Silhouette Score: {hierarchical_silhouette:.4f}")
+print(f"  - Davies-Bouldin Index: {hierarchical_davies_bouldin:.4f}")
+print(f"  - Calinski-Harabasz Index: {hierarchical_calinski:.2f}")
 print(f"\nРаспределение по кластерам:")
 print(pd.Series(hierarchical_labels).value_counts().sort_index())
 
 
-# --- 3.3 СРАВНЕНИЕ С BASELINE И ВЫБОР ПОБЕДИТЕЛЯ ---
-print("\n" + "=" * 60)
-print("СРАВНЕНИЕ ПРОДВИНУТЫХ МЕТОДОВ С BASELINE И ВЫБОР ПОБЕДИТЕЛЯ")
-print("=" * 60)
+print("\nСРАВНЕНИЕ ПРОДВИНУТЫХ МЕТОДОВ С BASELINE И ВЫБОР ПОБЕДИТЕЛЯ")
 
 comparison_table = pd.DataFrame(
     {
@@ -357,10 +343,8 @@ methods_scores = {
 winner = max(methods_scores, key=methods_scores.get)
 winner_score = methods_scores[winner]
 
-print(f"\n{'=' * 50}")
-print(f"ПОБЕДИТЕЛЬ: {winner}")
+print(f"\nПОБЕДИТЕЛЬ: {winner}")
 print(f"Silhouette Score: {winner_score:.4f}")
-print(f"{'=' * 50}")
 
 
 if winner == "KMeans":
@@ -377,16 +361,13 @@ best_method = winner
 
 # ЭТАП 4: МЕТРИКИ И СРАВНЕНИЕ
 
-print("\n" + "=" * 70)
-print("ЭТАП 4: МЕТРИКИ И СРАВНЕНИЕ")
-print("=" * 70)
+print("\nЭТАП 4: МЕТРИКИ И СРАВНЕНИЕ")
 
 # Silhouette Score (коэффициент силуэта)
 # Inertia (инерция) - только для KMeans
 # ARI (Adjusted Rand Index) - для сравнения с "эталонной" разметкой
 
-# --- 4.1 Вычисление метрик ---
-print("\n--- 4.1 Вычисление метрик ---")
+print("\n4.1 Вычисление метрик")
 
 # Создаем бинарную целевую переменную для ARI
 y_binary = (df["y"] == "yes").astype(int).values
@@ -400,9 +381,7 @@ ari_dbscan = (
     else np.nan
 )
 
-print("\n" + "=" * 60)
-print("ИТОГОВАЯ ТАБЛИЦА МЕТРИК")
-print("=" * 60)
+print("\nИТОГОВАЯ ТАБЛИЦА МЕТРИК")
 
 metrics_table = pd.DataFrame(
     {
@@ -473,10 +452,7 @@ plt.tight_layout()
 plt.savefig("metrics_comparison.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print("\n📊 [СКРИНШОТ 3: Сравнение метрик - metrics_comparison.png]")
-
-# --- 4.2 Краткий вывод ---
-print("\n--- 4.2 КРАТКИЙ ВЫВОД ПО МЕТРИКАМ ---")
+print("\n4.2 КРАТКИЙ ВЫВОД ПО МЕТРИКАМ")
 
 dbscan_sil_str = (
     f"{dbscan_silhouette:.4f}" if not np.isnan(dbscan_silhouette) else "N/A"
@@ -501,21 +477,18 @@ print(f"""
 
 # ЭТАП 5: ИНТЕРПРЕТАЦИЯ И ВИЗУАЛИЗАЦИЯ
 
-print("\n" + "=" * 70)
-print("ЭТАП 5: ИНТЕРПРЕТАЦИЯ И ВИЗУАЛИЗАЦИЯ")
-print("=" * 70)
+print("\nЭТАП 5: ИНТЕРПРЕТАЦИЯ И ВИЗУАЛИЗАЦИЯ")
 
-# --- 5.1 Визуализация кластеров в 2D (PCA) ---
-print("\n--- 5.1 Визуализация кластеров (PCA) ---")
+print("\n5.1 Визуализация кластеров (PCA)")
 
 pca = PCA(n_components=2, random_state=RANDOM_STATE)
 X_pca = pca.fit_transform(X_scaled)
 
 print(
-    f"✓ PCA: объяснённая дисперсия = {pca.explained_variance_ratio_.sum() * 100:.2f}%"
+    f"PCA: объяснённая дисперсия = {pca.explained_variance_ratio_.sum() * 100:.2f}%"
 )
-print(f"  • PC1: {pca.explained_variance_ratio_[0] * 100:.2f}%")
-print(f"  • PC2: {pca.explained_variance_ratio_[1] * 100:.2f}%")
+print(f"  - PC1: {pca.explained_variance_ratio_[0] * 100:.2f}%")
+print(f"  - PC2: {pca.explained_variance_ratio_[1] * 100:.2f}%")
 
 fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
@@ -562,10 +535,8 @@ plt.tight_layout()
 plt.savefig("clusters_pca.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print("\n📊 [СКРИНШОТ 4: Визуализация кластеров PCA - clusters_pca.png]")
-
-# --- 5.2 Профили кластеров ---
-print("\n--- 5.2 Профили кластеров ---")
+# 5.2 Профили кластеров
+print("\n5.2 Профили кластеров")
 
 df_analysis = df_cluster.copy()
 df_analysis["Cluster"] = best_labels
@@ -577,7 +548,6 @@ cluster_profiles_numeric = df_analysis.groupby("Cluster")[numeric_features].agg(
 )
 display(cluster_profiles_numeric.round(2))
 
-# Визуализация числовых профилей
 fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 axes = axes.flatten()
 
@@ -605,8 +575,6 @@ plt.tight_layout()
 plt.savefig("cluster_profiles_numeric.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print("\n📊 [СКРИНШОТ 5: Профили кластеров (числовые) - cluster_profiles_numeric.png]")
-
 categorical_features = ["job", "marital", "education", "poutcome"]
 
 fig, axes = plt.subplots(2, 2, figsize=(16, 12))
@@ -628,26 +596,20 @@ plt.tight_layout()
 plt.savefig("cluster_profiles_categorical.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print(
-    "\n📊 [СКРИНШОТ 6: Профили кластеров (категориальные) - cluster_profiles_categorical.png]"
-)
-
-# --- 5.3 Интерпретация кластеров ---
-print("\n--- 5.3 Интерпретация кластеров ---")
+# 5.3 Интерпретация кластеров
+print("\n5.3 Интерпретация кластеров")
 
 unique_clusters = sorted([c for c in df_analysis["Cluster"].unique() if c != -1])
 
 for cluster_id in unique_clusters:
     cluster_data = df_analysis[df_analysis["Cluster"] == cluster_id]
-    print(f"\n{'=' * 50}")
-    print(f"КЛАСТЕР {cluster_id}")
-    print(f"{'=' * 50}")
+    print(f"\nКЛАСТЕР {cluster_id}")
     print(
         f"Размер: {len(cluster_data)} клиентов ({len(cluster_data) / len(df_analysis) * 100:.1f}%)"
     )
     print(f"\nЧисловые характеристики:")
-    print(f"  • Средний возраст: {cluster_data['age'].mean():.1f} лет")
-    print(f"  • Среднее кол-во контактов: {cluster_data['campaign'].mean():.1f}")
+    print(f"  - Средний возраст: {cluster_data['age'].mean():.1f} лет")
+    print(f"  - Среднее кол-во контактов: {cluster_data['campaign'].mean():.1f}")
     top_job = (
         cluster_data["job"].mode().iloc[0]
         if len(cluster_data["job"].mode()) > 0
@@ -659,12 +621,10 @@ for cluster_id in unique_clusters:
         else "N/A"
     )
     print(f"\nКатегориальные характеристики:")
-    print(f"  • Преобладающая профессия: {top_job}")
-    print(f"  • Преобладающее сем. положение: {top_marital}")
+    print(f"  - Преобладающая профессия: {top_job}")
+    print(f"  - Преобладающее сем. положение: {top_marital}")
 
-print("\n" + "=" * 60)
-print("СВЯЗЬ КЛАСТЕРОВ С ЦЕЛЕВОЙ ПЕРЕМЕННОЙ (СОГЛАСИЕ НА ВКЛАД)")
-print("=" * 60)
+print("\nСВЯЗЬ КЛАСТЕРОВ С ЦЕЛЕВОЙ ПЕРЕМЕННОЙ (СОГЛАСИЕ НА ВКЛАД)")
 
 df_analysis["y"] = df["y"]
 conversion_by_cluster = df_analysis.groupby("Cluster")["y"].apply(
@@ -701,23 +661,21 @@ plt.show()
 
 # ЭТАП 6: АНАЛИЗ ОШИБОК ИЛИ РЕЗУЛЬТАТОВ
 
-print("\n" + "=" * 70)
-print("ЭТАП 6: АНАЛИЗ РЕЗУЛЬТАТОВ И ОГРАНИЧЕНИЙ")
-print("=" * 70)
+print("\nЭТАП 6: АНАЛИЗ РЕЗУЛЬТАТОВ И ОГРАНИЧЕНИЙ")
 
 # Вычисление силуэта для каждой точки
 sample_silhouettes = silhouette_samples(X_scaled, best_labels)
 df_analysis["silhouette"] = sample_silhouettes
 
 print(f"\nСтатистика силуэта по точкам:")
-print(f"  • Мин: {sample_silhouettes.min():.4f}")
-print(f"  • Макс: {sample_silhouettes.max():.4f}")
-print(f"  • Среднее: {sample_silhouettes.mean():.4f}")
-print(f"  • Медиана: {np.median(sample_silhouettes):.4f}")
+print(f"  - Мин: {sample_silhouettes.min():.4f}")
+print(f"  - Макс: {sample_silhouettes.max():.4f}")
+print(f"  - Среднее: {sample_silhouettes.mean():.4f}")
+print(f"  - Медиана: {np.median(sample_silhouettes):.4f}")
 
 bad_points = df_analysis[df_analysis["silhouette"] < 0]
 print(
-    f"\n⚠️ Найдено {len(bad_points)} точек с отрицательным силуэтом ({len(bad_points) / len(df_analysis) * 100:.2f}%)"
+    f"\nНайдено {len(bad_points)} точек с отрицательным силуэтом ({len(bad_points) / len(df_analysis) * 100:.2f}%)"
 )
 print("Это точки, которые ближе к соседнему кластеру, чем к своему.")
 
@@ -757,10 +715,7 @@ plt.tight_layout()
 plt.savefig("silhouette_distribution.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print("\n📊 [СКРИНШОТ 8: Распределение силуэта - silhouette_distribution.png]")
-
-
-print("\n--- Примеры точек с низким силуэтом ---")
+print("\nПримеры точек с низким силуэтом")
 print("\nТоп-5 точек с самым низким силуэтом:")
 worst_points = df_analysis.nsmallest(5, "silhouette")[
     clustering_features + ["Cluster", "silhouette"]
@@ -769,26 +724,24 @@ display(worst_points)
 
 # ЭТАП 7: РЕПРОДУЦИРУЕМОСТЬ
 
-print("\n" + "=" * 70)
-print("ЭТАП 7: РЕПРОДУЦИРУЕМОСТЬ")
-print("=" * 70)
+print("\nЭТАП 7: РЕПРОДУЦИРУЕМОСТЬ")
 
-print(f"\n--- Фиксированный random_state ---")
+print(f"\nФиксированный random_state")
 print(f"Для воспроизводимости использован: random_state = {RANDOM_STATE}")
 
-print("\n--- Версии библиотек ---")
-print(f"  • Python:       {platform.python_version()}")
-print(f"  • pandas:       {pd.__version__}")
-print(f"  • numpy:        {np.__version__}")
-print(f"  • seaborn:      {sns.__version__}")
-print(f"  • scikit-learn: {sklearn.__version__}")
-print(f"  • matplotlib:   {plt.matplotlib.__version__}")
+print("\nВерсии библиотек")
+print(f"  - Python:       {platform.python_version()}")
+print(f"  - pandas:       {pd.__version__}")
+print(f"  - numpy:        {np.__version__}")
+print(f"  - seaborn:      {sns.__version__}")
+print(f"  - scikit-learn: {sklearn.__version__}")
+print(f"  - matplotlib:   {plt.matplotlib.__version__}")
 
-print("\n--- Информация о системе ---")
-print(f"  • ОС: {platform.system()} {platform.release()}")
-print(f"  • Архитектура: {platform.machine()}")
+print("\nИнформация о системе")
+print(f"  - ОС: {platform.system()} {platform.release()}")
+print(f"  - Архитектура: {platform.machine()}")
 
 df_results = df.copy()
 df_results["cluster"] = best_labels
 df_results.to_csv("clustered_clients.csv", index=False)
-print("\n✓ Результаты сохранены в 'clustered_clients.csv'")
+print("\nРезультаты сохранены в 'clustered_clients.csv'")
