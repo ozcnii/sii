@@ -7,6 +7,9 @@
 import platform
 import warnings
 
+import matplotlib
+
+matplotlib.use("Agg")  # Неинтерактивный режим - графики только сохраняются в файлы
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -452,10 +455,12 @@ print(f"""
 # Выбираем лучший метод для дальнейшего анализа
 if winner == "KMeans":
     best_labels = kmeans_labels
+elif winner == "DBSCAN":
+    best_labels = dbscan_labels
 elif winner == "Hierarchical":
     best_labels = hierarchical_labels
 else:
-    best_labels = kmeans_labels
+    best_labels = kmeans_labels  # fallback
 
 best_method = winner
 
@@ -757,7 +762,10 @@ print(
 # --- 5.3 Интерпретация кластеров ---
 print("\n--- 5.3 Интерпретация кластеров ---")
 
-for cluster_id in range(optimal_k):
+# Получаем уникальные метки кластеров (для DBSCAN может быть -1)
+unique_clusters = sorted([c for c in df_analysis["Cluster"].unique() if c != -1])
+
+for cluster_id in unique_clusters:
     cluster_data = df_analysis[df_analysis["Cluster"] == cluster_id]
     print(f"\n{'=' * 50}")
     print(f"КЛАСТЕР {cluster_id}")
@@ -847,7 +855,7 @@ print("Это точки, которые ближе к соседнему кла
 
 # Визуализация распределения силуэта
 plt.figure(figsize=(12, 6))
-for cluster_id in range(optimal_k):
+for cluster_id in unique_clusters:
     cluster_silhouettes = sample_silhouettes[best_labels == cluster_id]
     y_lower = cluster_id * (len(df_analysis) // optimal_k + 10)
     y_upper = y_lower + len(cluster_silhouettes)
