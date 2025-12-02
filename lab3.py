@@ -3,16 +3,31 @@
 # Задача кластеризации: Сегментация клиентов банка
 # =============================================================================
 
-# ЭТАП 1: ПОСТАНОВКА ЗАДАЧИ И ДАННЫЕ
-
+# ВСЕ ИМПОРТЫ
+import platform
 import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import sklearn
 from IPython.display import display
+from scipy.cluster.hierarchy import dendrogram, linkage
+from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans
+from sklearn.decomposition import PCA
+from sklearn.metrics import (
+    adjusted_rand_score,
+    calinski_harabasz_score,
+    davies_bouldin_score,
+    silhouette_samples,
+    silhouette_score,
+)
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 warnings.filterwarnings("ignore")
+
+# ЭТАП 1: ПОСТАНОВКА ЗАДАЧИ И ДАННЫЕ
 
 # Настройки визуализации
 PALETTE = "Set2"
@@ -145,8 +160,17 @@ print("✓ Значения 'unknown' заменены на моду")
 
 # Для кластеризации будем использовать только релевантные признаки клиента
 clustering_features = [
-    "age", "job", "marital", "education", "default",
-    "housing", "loan", "campaign", "pdays", "previous", "poutcome",
+    "age",
+    "job",
+    "marital",
+    "education",
+    "default",
+    "housing",
+    "loan",
+    "campaign",
+    "pdays",
+    "previous",
+    "poutcome",
 ]
 
 df_cluster = df[clustering_features].copy()
@@ -155,15 +179,6 @@ print(f"  {clustering_features}")
 
 
 # ЭТАП 2: БАЗОВЫЙ МЕТОД (BASELINE) - K-MEANS
-
-from sklearn.cluster import KMeans
-from sklearn.metrics import (
-    calinski_harabasz_score,
-    davies_bouldin_score,
-    silhouette_score,
-    adjusted_rand_score,
-)
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 print("\n" + "=" * 70)
 print("ЭТАП 2: БАЗОВЫЙ МЕТОД (BASELINE) - K-MEANS КЛАСТЕРИЗАЦИЯ")
@@ -255,9 +270,6 @@ print(pd.Series(kmeans_labels).value_counts().sort_index())
 
 # ЭТАП 3: ПРОДВИНУТЫЕ МЕТОДЫ (DBSCAN и Hierarchical Clustering)
 
-from scipy.cluster.hierarchy import dendrogram, linkage
-from sklearn.cluster import DBSCAN, AgglomerativeClustering
-
 print("\n" + "=" * 70)
 print("ЭТАП 3: ПРОДВИНУТЫЕ МЕТОДЫ (DBSCAN и Hierarchical Clustering)")
 print("=" * 70)
@@ -310,9 +322,15 @@ df["cluster_dbscan"] = dbscan_labels
 # Метрики DBSCAN
 mask_dbscan = dbscan_labels != -1
 if mask_dbscan.sum() > n_clusters_dbscan and n_clusters_dbscan >= 2:
-    dbscan_silhouette = silhouette_score(X_scaled[mask_dbscan], dbscan_labels[mask_dbscan])
-    dbscan_davies_bouldin = davies_bouldin_score(X_scaled[mask_dbscan], dbscan_labels[mask_dbscan])
-    dbscan_calinski = calinski_harabasz_score(X_scaled[mask_dbscan], dbscan_labels[mask_dbscan])
+    dbscan_silhouette = silhouette_score(
+        X_scaled[mask_dbscan], dbscan_labels[mask_dbscan]
+    )
+    dbscan_davies_bouldin = davies_bouldin_score(
+        X_scaled[mask_dbscan], dbscan_labels[mask_dbscan]
+    )
+    dbscan_calinski = calinski_harabasz_score(
+        X_scaled[mask_dbscan], dbscan_labels[mask_dbscan]
+    )
 else:
     dbscan_silhouette = np.nan
     dbscan_davies_bouldin = np.nan
@@ -320,7 +338,9 @@ else:
 
 print(f"\nРезультаты DBSCAN:")
 print(f"  • Количество кластеров: {n_clusters_dbscan}")
-print(f"  • Точки-шум (outliers): {n_noise_dbscan} ({n_noise_dbscan / len(df) * 100:.2f}%)")
+print(
+    f"  • Точки-шум (outliers): {n_noise_dbscan} ({n_noise_dbscan / len(df) * 100:.2f}%)"
+)
 if not np.isnan(dbscan_silhouette):
     print(f"  • Silhouette Score: {dbscan_silhouette:.4f}")
 print(f"\nРаспределение по кластерам (-1 = шум):")
@@ -340,8 +360,14 @@ X_sample = X_scaled[sample_indices]
 linkage_matrix = linkage(X_sample, method="ward")
 
 plt.figure(figsize=(14, 6))
-dendrogram(linkage_matrix, truncate_mode="lastp", p=30, leaf_rotation=90,
-           leaf_font_size=10, show_contracted=True)
+dendrogram(
+    linkage_matrix,
+    truncate_mode="lastp",
+    p=30,
+    leaf_rotation=90,
+    leaf_font_size=10,
+    show_contracted=True,
+)
 plt.title("Дендрограмма иерархической кластеризации (Ward linkage)")
 plt.xlabel("Индекс точки / Размер кластера")
 plt.ylabel("Расстояние")
@@ -379,22 +405,32 @@ print("\n" + "=" * 60)
 print("СРАВНЕНИЕ ПРОДВИНУТЫХ МЕТОДОВ С BASELINE И ВЫБОР ПОБЕДИТЕЛЯ")
 print("=" * 60)
 
-comparison_table = pd.DataFrame({
-    'Метод': ['KMeans (BASELINE)', 'DBSCAN', 'Hierarchical'],
-    'Кластеров': [optimal_k, n_clusters_dbscan, optimal_k],
-    'Silhouette': [baseline_silhouette, dbscan_silhouette, hierarchical_silhouette],
-    'Davies-Bouldin': [baseline_davies_bouldin, dbscan_davies_bouldin, hierarchical_davies_bouldin],
-    'Calinski-Harabasz': [baseline_calinski, dbscan_calinski, hierarchical_calinski]
-})
+comparison_table = pd.DataFrame(
+    {
+        "Метод": ["KMeans (BASELINE)", "DBSCAN", "Hierarchical"],
+        "Кластеров": [optimal_k, n_clusters_dbscan, optimal_k],
+        "Silhouette": [baseline_silhouette, dbscan_silhouette, hierarchical_silhouette],
+        "Davies-Bouldin": [
+            baseline_davies_bouldin,
+            dbscan_davies_bouldin,
+            hierarchical_davies_bouldin,
+        ],
+        "Calinski-Harabasz": [
+            baseline_calinski,
+            dbscan_calinski,
+            hierarchical_calinski,
+        ],
+    }
+)
 
 print("\nСравнительная таблица методов:")
 display(comparison_table.round(4))
 
 # Определение победителя
 methods_scores = {
-    'KMeans': baseline_silhouette,
-    'DBSCAN': dbscan_silhouette if not np.isnan(dbscan_silhouette) else -1,
-    'Hierarchical': hierarchical_silhouette
+    "KMeans": baseline_silhouette,
+    "DBSCAN": dbscan_silhouette if not np.isnan(dbscan_silhouette) else -1,
+    "Hierarchical": hierarchical_silhouette,
 }
 
 winner = max(methods_scores, key=methods_scores.get)
@@ -414,9 +450,9 @@ print(f"""
 """)
 
 # Выбираем лучший метод для дальнейшего анализа
-if winner == 'KMeans':
+if winner == "KMeans":
     best_labels = kmeans_labels
-elif winner == 'Hierarchical':
+elif winner == "Hierarchical":
     best_labels = hierarchical_labels
 else:
     best_labels = kmeans_labels
@@ -463,35 +499,57 @@ ARI (Adjusted Rand Index): [-1, 1]
 print("\n--- 4.2 Вычисление метрик ---")
 
 # Создаем бинарную целевую переменную для ARI
-y_binary = (df['y'] == 'yes').astype(int).values
+y_binary = (df["y"] == "yes").astype(int).values
 
 # ARI для каждого метода (сравнение с целевой переменной)
 ari_kmeans = adjusted_rand_score(y_binary, kmeans_labels)
 ari_hierarchical = adjusted_rand_score(y_binary, hierarchical_labels)
-ari_dbscan = adjusted_rand_score(y_binary[mask_dbscan], dbscan_labels[mask_dbscan]) if mask_dbscan.sum() > 0 else np.nan
+ari_dbscan = (
+    adjusted_rand_score(y_binary[mask_dbscan], dbscan_labels[mask_dbscan])
+    if mask_dbscan.sum() > 0
+    else np.nan
+)
 
 print("\n" + "=" * 60)
 print("ИТОГОВАЯ ТАБЛИЦА МЕТРИК")
 print("=" * 60)
 
-metrics_table = pd.DataFrame({
-    'Метод': ['KMeans (BASELINE)', 'DBSCAN', 'Hierarchical'],
-    'Silhouette ↑': [baseline_silhouette, dbscan_silhouette, hierarchical_silhouette],
-    'Inertia ↓': [baseline_inertia, 'N/A', 'N/A'],
-    'ARI ↑': [ari_kmeans, ari_dbscan, ari_hierarchical],
-    'Davies-Bouldin ↓': [baseline_davies_bouldin, dbscan_davies_bouldin, hierarchical_davies_bouldin],
-    'Calinski-Harabasz ↑': [baseline_calinski, dbscan_calinski, hierarchical_calinski]
-})
+metrics_table = pd.DataFrame(
+    {
+        "Метод": ["KMeans (BASELINE)", "DBSCAN", "Hierarchical"],
+        "Silhouette ↑": [
+            baseline_silhouette,
+            dbscan_silhouette,
+            hierarchical_silhouette,
+        ],
+        "Inertia ↓": [baseline_inertia, "N/A", "N/A"],
+        "ARI ↑": [ari_kmeans, ari_dbscan, ari_hierarchical],
+        "Davies-Bouldin ↓": [
+            baseline_davies_bouldin,
+            dbscan_davies_bouldin,
+            hierarchical_davies_bouldin,
+        ],
+        "Calinski-Harabasz ↑": [
+            baseline_calinski,
+            dbscan_calinski,
+            hierarchical_calinski,
+        ],
+    }
+)
 
 display(metrics_table.round(4))
 
 # Визуализация сравнения
 fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-methods = ['KMeans', 'DBSCAN', 'Hierarchical']
+methods = ["KMeans", "DBSCAN", "Hierarchical"]
 colors = sns.color_palette(PALETTE, len(methods))
 
 # Silhouette
-sil_values = [baseline_silhouette, dbscan_silhouette if not np.isnan(dbscan_silhouette) else 0, hierarchical_silhouette]
+sil_values = [
+    baseline_silhouette,
+    dbscan_silhouette if not np.isnan(dbscan_silhouette) else 0,
+    hierarchical_silhouette,
+]
 axes[0].bar(methods, sil_values, color=colors)
 axes[0].set_title("Silhouette Score (↑ лучше)")
 axes[0].set_ylabel("Score")
@@ -499,7 +557,11 @@ for i, v in enumerate(sil_values):
     axes[0].text(i, v + 0.01, f"{v:.3f}", ha="center", fontsize=10)
 
 # ARI
-ari_values = [ari_kmeans, ari_dbscan if not np.isnan(ari_dbscan) else 0, ari_hierarchical]
+ari_values = [
+    ari_kmeans,
+    ari_dbscan if not np.isnan(ari_dbscan) else 0,
+    ari_hierarchical,
+]
 axes[1].bar(methods, ari_values, color=colors)
 axes[1].set_title("ARI (↑ лучше)")
 axes[1].set_ylabel("Score")
@@ -507,7 +569,11 @@ for i, v in enumerate(ari_values):
     axes[1].text(i, v + 0.001, f"{v:.4f}", ha="center", fontsize=10)
 
 # Calinski-Harabasz
-ch_values = [baseline_calinski, dbscan_calinski if not np.isnan(dbscan_calinski) else 0, hierarchical_calinski]
+ch_values = [
+    baseline_calinski,
+    dbscan_calinski if not np.isnan(dbscan_calinski) else 0,
+    hierarchical_calinski,
+]
 axes[2].bar(methods, ch_values, color=colors)
 axes[2].set_title("Calinski-Harabasz Index (↑ лучше)")
 axes[2].set_ylabel("Score")
@@ -522,13 +588,18 @@ print("\n📊 [СКРИНШОТ 3: Сравнение метрик - metrics_com
 
 # --- 4.3 Краткий вывод ---
 print("\n--- 4.3 КРАТКИЙ ВЫВОД ПО МЕТРИКАМ ---")
+
+dbscan_sil_str = (
+    f"{dbscan_silhouette:.4f}" if not np.isnan(dbscan_silhouette) else "N/A"
+)
+
 print(f"""
 Анализ метрик показывает:
 
 1. SILHOUETTE SCORE:
    • KMeans: {baseline_silhouette:.4f}
    • Hierarchical: {hierarchical_silhouette:.4f}
-   • DBSCAN: {dbscan_silhouette:.4f if not np.isnan(dbscan_silhouette) else 'N/A'}
+   • DBSCAN: {dbscan_sil_str}
    → Все методы показывают схожие результаты (~0.1-0.2)
 
 2. INERTIA (только KMeans):
@@ -538,7 +609,7 @@ print(f"""
 3. ARI (сравнение с целевой переменной y):
    • KMeans: {ari_kmeans:.4f}
    • Hierarchical: {ari_hierarchical:.4f}
-   → Низкие значения ARI ожидаемы, т.к. кластеризация не должна 
+   → Низкие значения ARI ожидаемы, т.к. кластеризация не должна
      полностью совпадать с бинарной целевой переменной
 
 ИТОГОВЫЙ ВЫВОД:
@@ -550,8 +621,6 @@ print(f"""
 
 # ЭТАП 5: ИНТЕРПРЕТАЦИЯ И ВИЗУАЛИЗАЦИЯ
 
-from sklearn.decomposition import PCA
-
 print("\n" + "=" * 70)
 print("ЭТАП 5: ИНТЕРПРЕТАЦИЯ И ВИЗУАЛИЗАЦИЯ")
 print("=" * 70)
@@ -562,7 +631,9 @@ print("\n--- 5.1 Визуализация кластеров (PCA) ---")
 pca = PCA(n_components=2, random_state=RANDOM_STATE)
 X_pca = pca.fit_transform(X_scaled)
 
-print(f"✓ PCA: объяснённая дисперсия = {pca.explained_variance_ratio_.sum() * 100:.2f}%")
+print(
+    f"✓ PCA: объяснённая дисперсия = {pca.explained_variance_ratio_.sum() * 100:.2f}%"
+)
 print(f"  • PC1: {pca.explained_variance_ratio_[0] * 100:.2f}%")
 print(f"  • PC2: {pca.explained_variance_ratio_[1] * 100:.2f}%")
 
@@ -570,24 +641,39 @@ print(f"  • PC2: {pca.explained_variance_ratio_[1] * 100:.2f}%")
 fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
 # KMeans
-scatter1 = axes[0].scatter(X_pca[:, 0], X_pca[:, 1], c=kmeans_labels, cmap="Set2", alpha=0.6, s=10)
+scatter1 = axes[0].scatter(
+    X_pca[:, 0], X_pca[:, 1], c=kmeans_labels, cmap="Set2", alpha=0.6, s=10
+)
 axes[0].set_title("KMeans кластеризация")
 axes[0].set_xlabel("PC1")
 axes[0].set_ylabel("PC2")
 plt.colorbar(scatter1, ax=axes[0], label="Кластер")
 centroids_pca = pca.transform(kmeans_final.cluster_centers_)
-axes[0].scatter(centroids_pca[:, 0], centroids_pca[:, 1], c="red", marker="X", s=200, edgecolors="black", linewidths=2, label="Центроиды")
+axes[0].scatter(
+    centroids_pca[:, 0],
+    centroids_pca[:, 1],
+    c="red",
+    marker="X",
+    s=200,
+    edgecolors="black",
+    linewidths=2,
+    label="Центроиды",
+)
 axes[0].legend()
 
 # DBSCAN
-scatter2 = axes[1].scatter(X_pca[:, 0], X_pca[:, 1], c=dbscan_labels, cmap="Set2", alpha=0.6, s=10)
+scatter2 = axes[1].scatter(
+    X_pca[:, 0], X_pca[:, 1], c=dbscan_labels, cmap="Set2", alpha=0.6, s=10
+)
 axes[1].set_title("DBSCAN кластеризация")
 axes[1].set_xlabel("PC1")
 axes[1].set_ylabel("PC2")
 plt.colorbar(scatter2, ax=axes[1], label="Кластер (-1=шум)")
 
 # Hierarchical
-scatter3 = axes[2].scatter(X_pca[:, 0], X_pca[:, 1], c=hierarchical_labels, cmap="Set2", alpha=0.6, s=10)
+scatter3 = axes[2].scatter(
+    X_pca[:, 0], X_pca[:, 1], c=hierarchical_labels, cmap="Set2", alpha=0.6, s=10
+)
 axes[2].set_title("Hierarchical кластеризация")
 axes[2].set_xlabel("PC1")
 axes[2].set_ylabel("PC2")
@@ -607,7 +693,9 @@ df_analysis["Cluster"] = best_labels
 
 numeric_features = ["age", "campaign", "pdays", "previous"]
 
-cluster_profiles_numeric = df_analysis.groupby("Cluster")[numeric_features].agg(["mean", "median", "std"])
+cluster_profiles_numeric = df_analysis.groupby("Cluster")[numeric_features].agg(
+    ["mean", "median", "std"]
+)
 display(cluster_profiles_numeric.round(2))
 
 # Визуализация числовых профилей
@@ -617,12 +705,22 @@ axes = axes.flatten()
 for i, feature in enumerate(numeric_features):
     russian_name = COLUMN_TRANSLATOR.get(feature, feature)
     cluster_means = df_analysis.groupby("Cluster")[feature].mean()
-    bars = axes[i].bar(cluster_means.index, cluster_means.values, color=sns.color_palette(PALETTE, optimal_k))
+    bars = axes[i].bar(
+        cluster_means.index,
+        cluster_means.values,
+        color=sns.color_palette(PALETTE, optimal_k),
+    )
     axes[i].set_title(f"Средний {russian_name} по кластерам")
     axes[i].set_xlabel("Кластер")
     axes[i].set_ylabel(russian_name)
     for bar, val in zip(bars, cluster_means.values):
-        axes[i].text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5, f"{val:.1f}", ha="center", fontsize=10)
+        axes[i].text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.5,
+            f"{val:.1f}",
+            ha="center",
+            fontsize=10,
+        )
 
 plt.tight_layout()
 plt.savefig("cluster_profiles_numeric.png", dpi=150, bbox_inches="tight")
@@ -638,7 +736,9 @@ axes = axes.flatten()
 
 for i, feature in enumerate(categorical_features):
     russian_name = COLUMN_TRANSLATOR.get(feature, feature)
-    cross_tab = pd.crosstab(df_analysis["Cluster"], df_analysis[feature], normalize="index")
+    cross_tab = pd.crosstab(
+        df_analysis["Cluster"], df_analysis[feature], normalize="index"
+    )
     cross_tab.plot(kind="bar", ax=axes[i], colormap=PALETTE, width=0.8)
     axes[i].set_title(f'Распределение "{russian_name}" по кластерам')
     axes[i].set_xlabel("Кластер")
@@ -650,7 +750,9 @@ plt.tight_layout()
 plt.savefig("cluster_profiles_categorical.png", dpi=150, bbox_inches="tight")
 plt.show()
 
-print("\n📊 [СКРИНШОТ 6: Профили кластеров (категориальные) - cluster_profiles_categorical.png]")
+print(
+    "\n📊 [СКРИНШОТ 6: Профили кластеров (категориальные) - cluster_profiles_categorical.png]"
+)
 
 # --- 5.3 Интерпретация кластеров ---
 print("\n--- 5.3 Интерпретация кластеров ---")
@@ -660,12 +762,22 @@ for cluster_id in range(optimal_k):
     print(f"\n{'=' * 50}")
     print(f"КЛАСТЕР {cluster_id}")
     print(f"{'=' * 50}")
-    print(f"Размер: {len(cluster_data)} клиентов ({len(cluster_data) / len(df_analysis) * 100:.1f}%)")
+    print(
+        f"Размер: {len(cluster_data)} клиентов ({len(cluster_data) / len(df_analysis) * 100:.1f}%)"
+    )
     print(f"\nЧисловые характеристики:")
     print(f"  • Средний возраст: {cluster_data['age'].mean():.1f} лет")
     print(f"  • Среднее кол-во контактов: {cluster_data['campaign'].mean():.1f}")
-    top_job = cluster_data["job"].mode().iloc[0] if len(cluster_data["job"].mode()) > 0 else "N/A"
-    top_marital = cluster_data["marital"].mode().iloc[0] if len(cluster_data["marital"].mode()) > 0 else "N/A"
+    top_job = (
+        cluster_data["job"].mode().iloc[0]
+        if len(cluster_data["job"].mode()) > 0
+        else "N/A"
+    )
+    top_marital = (
+        cluster_data["marital"].mode().iloc[0]
+        if len(cluster_data["marital"].mode()) > 0
+        else "N/A"
+    )
     print(f"\nКатегориальные характеристики:")
     print(f"  • Преобладающая профессия: {top_job}")
     print(f"  • Преобладающее сем. положение: {top_marital}")
@@ -676,19 +788,32 @@ print("СВЯЗЬ КЛАСТЕРОВ С ЦЕЛЕВОЙ ПЕРЕМЕННОЙ (С�
 print("=" * 60)
 
 df_analysis["y"] = df["y"]
-conversion_by_cluster = df_analysis.groupby("Cluster")["y"].apply(lambda x: (x == "yes").sum() / len(x) * 100)
+conversion_by_cluster = df_analysis.groupby("Cluster")["y"].apply(
+    lambda x: (x == "yes").sum() / len(x) * 100
+)
 
 print("\nКонверсия (% согласий) по кластерам:")
 for cluster_id, conv in conversion_by_cluster.items():
     print(f"  Кластер {cluster_id}: {conv:.2f}%")
 
 plt.figure(figsize=(10, 6))
-bars = plt.bar(conversion_by_cluster.index, conversion_by_cluster.values, color=sns.color_palette(PALETTE, optimal_k))
+bars = plt.bar(
+    conversion_by_cluster.index,
+    conversion_by_cluster.values,
+    color=sns.color_palette(PALETTE, optimal_k),
+)
 plt.title("Конверсия (согласие на вклад) по кластерам", fontsize=14)
 plt.xlabel("Кластер")
 plt.ylabel("% согласий")
 for bar, val in zip(bars, conversion_by_cluster.values):
-    plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5, f"{val:.1f}%", ha="center", fontsize=12, fontweight="bold")
+    plt.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height() + 0.5,
+        f"{val:.1f}%",
+        ha="center",
+        fontsize=12,
+        fontweight="bold",
+    )
 
 plt.tight_layout()
 plt.savefig("cluster_conversion.png", dpi=150, bbox_inches="tight")
@@ -703,8 +828,6 @@ print("\n" + "=" * 70)
 print("ЭТАП 6: АНАЛИЗ РЕЗУЛЬТАТОВ И ОГРАНИЧЕНИЙ")
 print("=" * 70)
 
-from sklearn.metrics import silhouette_samples
-
 # Вычисление силуэта для каждой точки
 sample_silhouettes = silhouette_samples(X_scaled, best_labels)
 df_analysis["silhouette"] = sample_silhouettes
@@ -717,7 +840,9 @@ print(f"  • Медиана: {np.median(sample_silhouettes):.4f}")
 
 # Точки с отрицательным силуэтом
 bad_points = df_analysis[df_analysis["silhouette"] < 0]
-print(f"\n⚠️ Найдено {len(bad_points)} точек с отрицательным силуэтом ({len(bad_points) / len(df_analysis) * 100:.2f}%)")
+print(
+    f"\n⚠️ Найдено {len(bad_points)} точек с отрицательным силуэтом ({len(bad_points) / len(df_analysis) * 100:.2f}%)"
+)
 print("Это точки, которые ближе к соседнему кластеру, чем к своему.")
 
 # Визуализация распределения силуэта
@@ -727,10 +852,27 @@ for cluster_id in range(optimal_k):
     y_lower = cluster_id * (len(df_analysis) // optimal_k + 10)
     y_upper = y_lower + len(cluster_silhouettes)
     color = sns.color_palette(PALETTE, optimal_k)[cluster_id]
-    plt.fill_betweenx(np.arange(y_lower, y_upper), 0, np.sort(cluster_silhouettes), facecolor=color, edgecolor=color, alpha=0.7)
-    plt.text(-0.05, y_lower + len(cluster_silhouettes) / 2, f"Кластер {cluster_id}", fontsize=10)
+    plt.fill_betweenx(
+        np.arange(y_lower, y_upper),
+        0,
+        np.sort(cluster_silhouettes),
+        facecolor=color,
+        edgecolor=color,
+        alpha=0.7,
+    )
+    plt.text(
+        -0.05,
+        y_lower + len(cluster_silhouettes) / 2,
+        f"Кластер {cluster_id}",
+        fontsize=10,
+    )
 
-plt.axvline(x=sample_silhouettes.mean(), color="red", linestyle="--", label=f"Средний силуэт ({sample_silhouettes.mean():.3f})")
+plt.axvline(
+    x=sample_silhouettes.mean(),
+    color="red",
+    linestyle="--",
+    label=f"Средний силуэт ({sample_silhouettes.mean():.3f})",
+)
 plt.xlabel("Силуэт")
 plt.ylabel("Точки данных")
 plt.title("Распределение силуэта по кластерам")
@@ -744,7 +886,9 @@ print("\n📊 [СКРИНШОТ 8: Распределение силуэта - s
 # Примеры неудачных точек
 print("\n--- Примеры точек с низким силуэтом ---")
 print("\nТоп-5 точек с самым низким силуэтом:")
-worst_points = df_analysis.nsmallest(5, "silhouette")[clustering_features + ["Cluster", "silhouette"]]
+worst_points = df_analysis.nsmallest(5, "silhouette")[
+    clustering_features + ["Cluster", "silhouette"]
+]
 display(worst_points)
 
 # Предложения по улучшению
@@ -771,9 +915,6 @@ print("""
 
 
 # ЭТАП 7: РЕПРОДУЦИРУЕМОСТЬ
-
-import platform
-import sklearn
 
 print("\n" + "=" * 70)
 print("ЭТАП 7: РЕПРОДУЦИРУЕМОСТЬ")
